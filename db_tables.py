@@ -5,10 +5,8 @@ import pymysql
 from pymysql.constants.FIELD_TYPE import CHAR
 
 #OpenShift connection parameters
-'''metric_database = MySQLDatabase(os.getenv('MYSQL_DATABASE'), host = os.getenv('MYSQL_SERVICE_HOST'),  \
-                                user = os.getenv('MYSQL_USER'), password = os.getenv('MYSQL_PASSWORD'))'''
-
-metric_database = MySQLDatabase('metric_db', user = 'root', password = 'Blackterr0r!839')
+metric_database = MySQLDatabase(os.getenv('MYSQL_DATABASE'), host = os.getenv('MYSQL_SERVICE_HOST'),  \
+                                user = os.getenv('MYSQL_USER'), password = os.getenv('MYSQL_PASSWORD'))
 
 
 class BaseModel(peewee.Model):

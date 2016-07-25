@@ -43,7 +43,7 @@ class WordPressAuth:
     access_token = None
     
     def __init__(self):
-        self.local = True #False if deploying on OS
+        self.local = False #False if deploying on OS
         self.client_id = OAuthInfo.select(OAuthInfo.client_id).where(OAuthInfo.local == self.local).scalar()
         self.redirect_uri = OAuthInfo.select(OAuthInfo.redirect_uri).where(OAuthInfo.local == self.local).scalar()
         self.client_secret = OAuthInfo.select(OAuthInfo.client_secret).where(OAuthInfo.local == self.local).scalar()
