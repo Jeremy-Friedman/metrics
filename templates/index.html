@@ -1,0 +1,145 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="Metric tool">
+    <meta name="author" content="Jeremy Friedman">
+    <title>Metric Tool</title>
+    <link rel="stylesheet" href="../static/css/bootstrap.css" />
+    
+<style>
+	div.multiselect {
+	    margin-left: 270px;
+	
+	    padding-right: 1500px;
+	}
+	select.scale_width {
+		width:auto
+	}
+	input.pad_right {
+		margin-left:15px;
+	}
+	table.table-inverse {
+	    margin-left: 270px;
+	    table-layout:fixed;
+	}
+</style>
+    
+    <!-- Bootstrap Core CSS -->
+   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.2/css/bootstrap.min.css" integrity="sha384-y3tfxAZXuh4HwSYylfB+J125MxIs6mR5FOHamPBG064zB+AFeWH94NdvaCBm8qnd" crossorigin="anonymous">
+
+    <!-- Custom CSS -->
+    <link href="/static/css/simple-sidebar.css" rel="stylesheet">
+    
+    <link href="/static/css/bootstrap-chosen.css" rel="stylesheet">
+    
+    <style>
+      body { margin-bottom: 144px; }
+      header { margin: 72px 0 36px; }
+      header h1 { font-size: 54px; }
+    </style>    
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.2/js/bootstrap.min.js" integrity="sha384-vZ2WRJMwsjRMW/8U7i6PWi6AlO1L79snBrmgiDpgIWJ82z8eA5lenwvxbMV1PAh7" crossorigin="anonymous"></script>
+    <script src="/static/js/chosen.jquery.js"></script>
+    <script>
+      $(function() {
+        $('.chosen-select').chosen();
+        $('.chosen-select-deselect').chosen({ allow_single_deselect: true });
+      });
+    </script>
+  </head>
+  <body>
+  <!-- Sidebar -->
+        <div id="sidebar-wrapper">
+            <ul class="sidebar-nav">
+                <li class="sidebar-brand">
+                    <a href="#" tabindex=1>
+                        Metric Tool
+                    </a>
+                </li>
+                <li>
+                    <a href="#" tabindex=2>Home Page</a>
+                </li>
+                <li>
+                    <a href="#" tabindex=3>Summary Posts</a>
+                </li>
+                <li>
+                    <a href="#" tabindex=4>Email Subscription</a>
+                </li>
+
+            </ul>
+        </div>
+		<form id="page_form" action="{{ url_for('auth_top_time_query') }}" method="POST">
+        <div class=multiselect>
+        	<span style="white-space: nowrap;">
+        	  What has 
+  	          <select name = "author" data-placeholder="author (default: all authors)" multiple class="chosen-select" tabindex="5"> 
+	              <option value=""></option>
+	              {% for author in authors %}
+	              <option> {{author}}</option>
+	              {% endfor %}
+           	  </select>
+            written on topic 
+              <select name = "topic" data-placeholder="topic (default: all topics)" multiple class="chosen-select" tabindex="6"> 
+	              <option value=""></option>
+	              {% for tag in tags %}
+	              <option> {{tag|safe}}</option>
+	              {% endfor %}
+           	  </select>
+           	  between
+          	  <select style="width:190px" name = "start_date" data-placeholder="start date (YYYY-MM-DD)" multiple class="chosen-select" tabindex="7"> 
+	              <option value=""></option>
+           	  </select>
+           	  and
+           	  <select  style="width:190px" name = "end_date" data-placeholder="end date (YYYY-MM-DD)" multiple class="chosen-select" tabindex="8"> 
+	              <option value=""></option>
+           	  </select>
+           	  ?</br>
+           	   <select style="width:250px" name = "filter" data-placeholder="filter blogs (default: all blogs)" multiple class="chosen-select" tabindex="9"> 
+	              <option value=""></option>
+	              {% for host in hosts %}
+	              <option> {{host|safe}}</option>
+	              {% endfor %}
+           	   </select>
+           	   <select style="width:190px" name = "sort" data-placeholder="sort by (default: date)" multiple class="chosen-select" tabindex="9"> 
+	              <option value=""></option>
+	              <option>Date</option>
+	              <option>Views</option>
+           	  </select>
+           	  <input id="submit_button" class="pad_right" type="submit" value="Submit">
+        	</span>
+        </div>
+        {% if answer %}
+        <div id="hidden_div" style="display:table" class="">
+        <table id="answer_table" class="table table-inverse" style="width:auto">
+        <strong style="margin-left:270px">Found {{results}} results:</strong>
+		  <thead>
+		    <tr>
+		      <th style="width:150px"><strong>Author</strong></th>
+		      <th style="width:250px"><strong>Title</strong></th>
+   		      <th><strong>Topic Matches</strong></th>
+ 		      <th style="width:100px"><strong>Post Date</strong></th>
+		      <th style="width:75px"><strong>Views</strong></th>
+   		      <th><strong>Hosted On</strong></th>
+		    </tr>
+		  </thead>
+		  <tbody>
+	          {% for match in answer %}
+	          <tr>
+       		  		<td> <strong> {{match['author']|safe}} </strong> </a> </td>
+					<td> <a href= {{match['url']|safe}} target="_blank" style="color:red"> <strong> {{match['title']|safe}} </strong></td>
+       		  		<td> <strong> {{match['topic_matches']|safe}} </strong></td>
+	  		        <td> <strong> {{match['post_date']|safe}} </strong></td>
+       		  		<td> <strong> {{match['views']|safe}} </strong></td>
+					<td> <a href= https://{{match['host']|safe}} target="_blank" style="color:red"> <strong> {{match['host']|safe}} </strong></td>
+	          </tr>
+	          {% endfor %}
+		  </tbody>
+		</table>	
+		</div>
+		{% endif %}
+    </form>				
+  </body>
+</html>
