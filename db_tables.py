@@ -8,7 +8,6 @@ from pymysql.constants.FIELD_TYPE import CHAR
 metric_database = MySQLDatabase(os.getenv('MYSQL_DATABASE'), host = os.getenv('MYSQL_SERVICE_HOST'),  \
                                 user = os.getenv('MYSQL_USER'), password = os.getenv('MYSQL_PASSWORD'))
 
-
 class BaseModel(peewee.Model):
     class Meta:
         database = metric_database

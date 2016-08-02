@@ -1,4 +1,4 @@
-from sched_jobs import start_scheduled_jobs, populate_db, parallel_tags
+from sched_jobs import start_scheduled_jobs, populate_db
 from flask import Flask, request, session, render_template, g 
 import json
 from peewee import *
@@ -27,8 +27,21 @@ import sys, socket
 '''
 
 application = Flask(__name__)
-all_blogs = ['verticalindustriesblog.redhat.com', 'captainkvm.com', 'rhelblog.redhat.com', 'developerblog.redhat.com', 'redhatstackblog.redhat.com', 'redhatstorage.redhat.com', 'servicesblog.redhat.com', 'mobileblog.redhat.com', 'middlewareblog.redhat.com', 'cloudformsblog.redhat.com']
-redirected_urls = {"redhat.com/blog/verticalindustries":"verticalindustriesblog.redhat.com", "developers.redhat.com":"developerblog.redhat.com", "redhat.com/blog/mobile":"mobileblog.redhat.com"}
+wp_blogs = ['verticalindustriesblog.redhat.com', 'captainkvm.com', 'rhelblog.redhat.com', 'developerblog.redhat.com', 'redhatstackblog.redhat.com', \
+            'redhatstorage.redhat.com', 'servicesblog.redhat.com', 'mobileblog.redhat.com', 'middlewareblog.redhat.com', 'cloudformsblog.redhat.com']
+non_wp_blogs = ['https://opensource.com/feed', 'http://stef.thewalter.net/feeds/all.atom.xml', 'http://crunchtools.com/feed', \
+                'http://community.redhat.com/blog/feed.xml', 'https://blog.openshift.com/feed/', 'http://www.projectatomic.io/blog/feed.xml', \
+                'https://www.redhat.com/en/rss/blog']
+redirected_urls = {"redhat.com/blog/verticalindustries":"verticalindustriesblog.redhat.com", "developers.redhat.com":"developerblog.redhat.com", \
+                   "redhat.com/blog/mobile":"mobileblog.redhat.com"}
+
+def find_between(s, first, last):
+    try:
+        start = s.rindex(first) + len(first)
+        end = s.rindex(last, start)
+        return s[start:end]
+    except ValueError:
+        return ""
 
 def strip_tags(html):
     code_to_symbol = HTMLParser()
@@ -49,7 +62,8 @@ class WordPressAuth:
         self.client_secret = OAuthInfo.select(OAuthInfo.client_secret).where(OAuthInfo.local == self.local).scalar()
     
     def prompt_authentication(self):
-        auth_code_response = requests.get('https://public-api.wordpress.com/oauth2/authorize?client_id=' + self.client_id + '&redirect_uri=' + self.redirect_uri + '&response_type=code&scope=global') #LOCAL
+        auth_code_response = requests.get('https://public-api.wordpress.com/oauth2/authorize?client_id=' + self.client_id + '&redirect_uri=' + \
+                                          self.redirect_uri + '&response_type=code&scope=global') #LOCAL
         WordPressAuth.auth_code = (request.args.get("code")) #retrieve code wp supplies after user authenticates
         if (WordPressAuth.auth_code != None and WordPressAuth.access_token == None):      
             return self.get_token()
@@ -78,20 +92,36 @@ def auth_top_time_query_options(answer = None, results = 0):
     for row in Post.select(Post.title).distinct().group_by(Post.title):
         titles.append(row.title)
     for row in Post.select(Post.tags).distinct().group_by(Post.tags):
-        row.tags = ast.literal_eval("[" + str(row.tags) + "]".decode('unicode_escape').encode('ascii', 'ignore').strip()) #convert string representation in database to a list
+        row.tags = ast.literal_eval("[" + str(row.tags) + "]") #convert string representation in database to a list
         for tag_list in row.tags:
             for tag in tag_list:
                 tags.add(tag)
     for row in Post.select(Post.url).distinct().group_by(Post.url):
-        for blog in all_blogs:
-            if blog in row.url:
-                hosts.add(blog)
-                break
-            else:
-                for redirect_url in redirected_urls.keys():
-                    if redirect_url in row.url:
-                        hosts.add(redirected_urls[redirect_url])
-                        break 
+        for blog in wp_blogs, non_wp_blogs: #returns a tuple of the two blog types
+            for blog in blog:
+                if blog in row.url: #wordpress
+                    hosts.add(blog)
+                    break
+                elif find_between(blog, "http://www.", "/blog/feed.xml") in row.url and find_between(blog, "http://www.", "/blog/feed.xml") != "": #project atomic
+                    hosts.add(find_between(blog, "http://www.", "/blog/feed.xml"))
+                    break
+                elif find_between(blog, "https://", "/feed") in row.url and find_between(blog, "https://", "/feed") != "": #opensource.com, blog.openshift.com
+                    hosts.add(find_between(blog, "https://", "/feed"))
+                    break
+                elif find_between(blog, "http://", "/feed") in row.url and find_between(blog, "http://", "/feed") != "": #crunchtools, stef.thewalter.net
+                    hosts.add(find_between(blog, "http://", "/feed"))
+                    break
+                elif find_between(blog, "http://", "/blog/feed.xml") in row.url and find_between(blog, "http://", "/blog/feed.xml") != "": #community.redhat.com
+                    hosts.add(find_between(blog, "http://", "/blog/feed.xml"))
+                    break
+                elif find_between(blog, "https://www.", "/en/rss/blog") in row.url and find_between(blog, "https://www.", "/en/rss/blog") == "redhat.com": #redhat.com
+                    hosts.add(find_between(blog, "https://www.", "/en/rss/blog"))
+                    break
+                else:
+                    for redirect_url in redirected_urls.keys():
+                        if redirect_url in row.url:
+                            hosts.add(redirected_urls[redirect_url])
+                            break 
     return render_template("index.html", authors = authors, titles = titles, tags = sorted(tags), hosts=sorted(hosts), answer = answer, results = results)
 
 @application.route("/auth_top_time_query", methods=["GET", "POST"])
@@ -137,12 +167,13 @@ def auth_top_time_query():
             #for all matching authors, create a list of all written topics
             if row.author in authors: #this will filter out a lot of unnecessary processing when user selects an author
                 matching_topics = get_matching_topics(row, topics)
-                if (((len(matching_topics) > 0) or ((len(matching_topics) == 0) and (row.tags == "") and not topics_selected)) \
-                    and start_date[2:-1] <= row.post_date.decode('unicode_escape').encode('ascii', 'ignore').strip() <= end_date[2:-1]): #verify current row meets all filter requirements
-                    host = blog_in_filter(row, all_blogs, False)
-                    if ((not blogs_selected) or (blogs_selected and blog_in_filter(row, blogs))):
-                        results += 1
-                        answer.append({'author': row.author, 'title': row.title, 'post_date': row.post_date, 'views': str(row.views), 'topic_matches': str(matching_topics)[5:-2], 'url': str(row.url), 'host': host})     
+                if ((((len(matching_topics) > 0) or ((len(matching_topics) == 0) and (row.tags == "") and not topics_selected)) \
+                    and start_date[2:-1] <= row.post_date.decode('unicode_escape').encode('ascii', 'ignore').strip() <= end_date[2:-1]) \
+                    and (not blogs_selected) or (blogs_selected and blog_in_filter(row, blogs))): #verify current row meets all filter requirements
+                    host = blog_in_filter(row, wp_blogs + non_wp_blogs, False)
+                    results += 1
+                    answer.append({'author': row.author, 'title': row.title, 'post_date': row.post_date, 'views': str(row.views), \
+                                   'topic_matches': str(matching_topics)[5:-2], 'url': str(row.url), 'host': host})     
         return auth_top_time_query_options(answer, results)
     return ""
 
@@ -153,15 +184,26 @@ def get_matching_topics(row, topics):
         curr_row = ast.literal_eval(row.tags)
         for topic in topics:
             if (topic in curr_row): 
-                matching_topics.add(topic)
+                matching_topics.add(topic.decode('unicode_escape').encode('ascii', 'ignore').strip())
     return matching_topics
                 
-def blog_in_filter(row, blogs = all_blogs, filter = True):
+def blog_in_filter(row, blogs = wp_blogs + non_wp_blogs, filter = True):
     """Accepts or rejects the current database record based on the user's blog filter setting."""
     for blog in blogs:
-        if blog in row.url:
+        if blog in row.url and blog != "redhat.com": #this will get all WordPress blogs
             return True if filter else blog
-        else:
+        elif find_between(blog, "https://", "/feed") in row.url and find_between(blog, "https://", "/feed") != "": #opensource.com, blog.openshift.com
+            return True if filter else find_between(blog, "https://", "/feed")
+        elif find_between(blog, "http://", "/feed") in row.url and find_between(blog, "http://", "/feed") != "": #crunchtools, stef.thewalter.net
+            return True if filter else find_between(blog, "http://", "/feed")
+        elif find_between(blog, "http://www.", "/blog/feed.xml") in row.url and find_between(blog, "http://www.", "/blog/feed.xml") != "": #project atomic
+            return True if filter else find_between(blog, "http://www.", "/blog/feed.xml")
+        elif find_between(blog, "http://", "/blog/feed.xml") in row.url and find_between(blog, "http://", "/blog/feed.xml") != "": #community.redhat.com
+            return True if filter else find_between(blog, "http://", "/blog/feed.xml")
+        elif (find_between(blog, "https://www.", "/rss/blog") in row.url) and "redhat.com/en" in row.url and ((blog == "redhat.com") or \
+                                                                (blog == "https://www.redhat.com/en/rss/blog")): #handles redhat.com blogs
+            return True if filter else "redhat.com"#find_between(blog, "https://www.", "/en/rss/blog")
+        else: #redirect WordPress blogs
             for redirect_url in redirected_urls.keys():
                 if redirected_urls[redirect_url] == blog and redirect_url in row.url:
                     return True if filter else redirected_urls[redirect_url]
@@ -181,7 +223,7 @@ def wipe_db():
     metric_database.drop_tables([Post], True)
     metric_database.create_tables([Post], True)
 
-#Include next two functions on next OS Push. See if it fixes the problem with MySQL going bad.
+#prevents OS database issue
 @application.before_request
 def before_request():
     g.db = metric_database
@@ -192,15 +234,12 @@ def after_request(response):
     g.db.close()
     return response
 
-#@application.before_first_request
-#def initialize():
-
-#Ensures that not every since gunicorn worker runs an apscheduler job
+#Ensures that not every gunicorn worker runs an apscheduler job
 try:
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind(("127.0.0.1", 47200))
 except socket.error:
-    print "!!!scheduler already started, DO NOTHING"
+    pass
 else:
     start_scheduled_jobs()
     
