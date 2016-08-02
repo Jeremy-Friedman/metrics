@@ -96,7 +96,7 @@ def get_tags(url):
                         tags.append(a.contents[0].decode('unicode_escape').encode('ascii', 'ignore').strip())
                 except:
                     pass
-    if "redhat.com" in url:
+    if "redhat.com" in url: #find an alternative -- all tags get returned at once, makes the dropdown no bueno
         for meta in soup.find_all('meta'):
             if meta.get("name") == "taxonomy-blog_post_category":
                 tags.append(meta.get("content"))
@@ -122,7 +122,7 @@ def populate_spreadsheet():
     scope = ['https://spreadsheets.google.com/feeds']
     credentials = ServiceAccountCredentials.from_json_keyfile_name('metrictool-f16ab8f08d89.json', scope)
     conn = gspread.authorize(credentials)
-    worksheet = conn.open("Kimberly").sheet1
+    worksheet = conn.open("Metrics").sheet1
     
     worksheet.update_acell('A1', 'AUTHORS')
     worksheet.update_acell('B1', 'TITLES')
