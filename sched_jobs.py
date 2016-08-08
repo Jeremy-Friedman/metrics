@@ -87,7 +87,7 @@ def get_tags(url):
     """Tags are pulled from source HTML, which varies per blog. Hence the conditional situation."""
     tags = []
     src=requests.get(url)
-    soup=BeautifulSoup(src.content)
+    soup=BeautifulSoup(src.content, "html.parser")
     for blog in tag_source_html.keys():
         if blog in url:
             for a in soup.find_all('a'):
