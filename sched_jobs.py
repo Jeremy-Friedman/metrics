@@ -43,8 +43,12 @@ def parse_wp_blogs(blog):
     while len(post_table) < num_posts: 
         post = requests.get('https://public-api.wordpress.com/rest/v1.1/sites/' + blog + '/posts/?number=100&offset=' + str(len(post_table)))
         for index in range(num_posts): 
-            if index == len(post.json()['posts']): #prevent an IndexError
-                break
+            try:
+                if index == len(post.json()['posts']): #prevent an IndexError
+                    break
+            except:
+                print(post)
+                print(blog)
             
             curr_title = strip_tags(json.dumps(post.json()['posts'][index]['title']).decode('unicode_escape').encode('ascii', 'ignore').strip())[1:-1]
             curr_author= json.dumps(post.json()['posts'][index]['author']['name']).decode('unicode_escape').encode('ascii', 'ignore').strip()[1:-1]
