@@ -114,13 +114,18 @@ def get_tags(url):
     return tags
     
 def insert_row(post_table):
+    """Updates the database with the new post. If the post already exists, update it's view count."""
     for post_index in range(len(post_table)):
         query = Post.select().where(Post.url == post_table[post_index]['url'])
         if not query.exists():
             with metric_database.atomic(): #speeds up bulk inserts - see peewee docs
                 Post.create(title=post_table[post_index]['title'], author=post_table[post_index]['author'], post_date=post_table[post_index]['post_date'],\
                              tags=post_table[post_index]['tags'], views=post_table[post_index]['views'], url=post_table[post_index]['url'])
-
+        else:
+            with metric_database.atomic():
+                query = Post.update(views = post_table[post_index]['views']).where(Post.url == post_table[post_index]['url'])
+                query.execute()
+                
 def populate_spreadsheet():
     """Prerequisite: database is filled"""
     scope = ['https://spreadsheets.google.com/feeds']

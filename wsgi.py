@@ -27,7 +27,7 @@ import sys, socket
 '''
 
 application = Flask(__name__)
-wp_blogs = ['verticalindustriesblog.redhat.com', 'captainkvm.com', 'rhelblog.redhat.com', 'developerblog.redhat.com', 'redhatstackblog.redhat.com', \
+wp_blogs = ['rhelblog.redhat.com', 'verticalindustriesblog.redhat.com', 'captainkvm.com', 'developerblog.redhat.com', 'redhatstackblog.redhat.com', \
             'redhatstorage.redhat.com', 'servicesblog.redhat.com', 'mobileblog.redhat.com', 'middlewareblog.redhat.com', 'cloudformsblog.redhat.com']
 non_wp_blogs = ['https://opensource.com/feed', 'http://stef.thewalter.net/feeds/all.atom.xml', 'http://crunchtools.com/feed', \
                 'http://community.redhat.com/blog/feed.xml', 'https://blog.openshift.com/feed/', 'http://www.projectatomic.io/blog/feed.xml', \
@@ -82,6 +82,8 @@ class WordPressAuth:
 def auth_top_time_query_options(answer = None, results = 0):
     """The main view in it's pre or post-queried state, as per the value of @param - 'answer'.
     I.e., populates all the dropdowns. If provided an answer, renders that as well."""
+    
+    #These lists represent the data in the filter dropdowns
     authors = []
     titles = []
     post_date = []
@@ -211,8 +213,6 @@ def blog_in_filter(row, blogs = wp_blogs + non_wp_blogs, filter = True):
 
 @application.route("/")
 def show_metrics():    
-    #token = OAuthInfo.select(OAuthInfo.access_token)
-
     return auth_top_time_query_options()
     #auth = WordPressAuth()
     #return auth.prompt_authentication()    
