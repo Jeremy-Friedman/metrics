@@ -173,7 +173,7 @@ def auth_top_time_query():
                 matching_topics = get_matching_topics(row, topics)
                 if ((((len(matching_topics) > 0) or ((len(matching_topics) == 0) and (row.tags == "") and not topics_selected)) \
                     and start_date[2:-1] <= row.post_date.decode('unicode_escape').encode('ascii', 'ignore').strip() <= end_date[2:-1]) \
-                    and (not blogs_selected) or (blogs_selected and blog_in_filter(row, blogs))): #verify current row meets all filter requirements
+                    and ((not blogs_selected) or (blogs_selected and blog_in_filter(row, blogs)))): #verify current row meets all filter requirements
                     host = blog_in_filter(row, wp_blogs + non_wp_blogs, False)
                     results += 1
                     answer.append({'author': row.author, 'title': row.title, 'post_date': row.post_date, 'views': str(row.views), \
