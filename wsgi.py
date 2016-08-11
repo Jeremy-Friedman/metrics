@@ -33,7 +33,7 @@ non_wp_blogs = ['https://opensource.com/feed', 'http://stef.thewalter.net/feeds/
                 'http://community.redhat.com/blog/feed.xml', 'https://blog.openshift.com/feed/', 'http://www.projectatomic.io/blog/feed.xml', \
                 'https://www.redhat.com/en/rss/blog']
 
-#this is necessary because some of these blogs redirect to other addresses 
+#this is necessary because some of these blogs redirect to other addresses
 redirected_urls = {"redhat.com/blog/verticalindustries":"verticalindustriesblog.redhat.com", "developers.redhat.com":"developerblog.redhat.com", \
                    "redhat.com/blog/mobile":"mobileblog.redhat.com"}
 
