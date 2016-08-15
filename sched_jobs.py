@@ -24,6 +24,7 @@ def populate():
 def populate_db():
     print("populating database...")
     from wsgi import wp_blogs, non_wp_blogs
+    metric_database.init()
     metric_database.connect()
     for blog in non_wp_blogs:
         curr_blogs_posts = parse_non_wp_blogs(blog)
