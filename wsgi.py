@@ -8,7 +8,7 @@ from gunicorn.instrument.statsd import METRIC_VAR
 import ast
 from HTMLParser import HTMLParser
 import sys, socket
-# YO!
+# YO - YO - YO
 '''    
 **********************************************************************************************************
 **********************WP REST API (https://developer.wordpress.com/docs/api/)*****************************
