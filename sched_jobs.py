@@ -61,11 +61,13 @@ def parse_wp_blogs(blog):
             curr_wp_id = json.dumps(post.json()['posts'][index]['ID'])
             views_response = requests.get('http://public-api.wordpress.com/rest/v1.1/sites/' + blog + '/stats/post/' + str(curr_wp_id), headers={'Authorization':'Bearer ' \
                                                                                                                                                  + token.scalar()})
+            curr_content = get_content(blog = blog, wp_blog_id = curr_wp_id)
             try:
                 curr_views = int(json.dumps(views_response.json()['views']))
             except:
                 curr_views = 0
-            post_table.append({'title': curr_title, 'author': curr_author, 'post_date': curr_post_date, 'tags': curr_tags, 'url': curr_url, 'views': curr_views})
+            post_table.append({'title': curr_title, 'author': curr_author, 'post_date': curr_post_date, 'tags': curr_tags, 'url': curr_url, \
+                               'views': curr_views, 'content': curr_content})
         print(len(post_table))
     return post_table
         
@@ -83,9 +85,39 @@ def parse_non_wp_blogs(blog):
         except:
             author = "N/A"
         tags = get_tags(url)
-        post_table.append({'title': title, 'author': author, 'post_date': post_date, 'tags': tags, 'url': url, 'views': 0})     
-        
+        curr_content = ""#get_content(non_wp_url = url)
+        post_table.append({'title': title, 'author': author, 'post_date': post_date, 'tags': tags, 'url': url, 'views': 0, 'content': curr_content})     
     return post_table
+
+def get_content(blog = None, wp_blog_id = None, non_wp_url = None):
+    """Return all text from a blog post's content. If wp_blog_id == None, it's a non-wp blog."""
+    if wp_blog_id:
+        content_response = requests.get('http://public-api.wordpress.com/rest/v1.1/sites/' + blog + '/posts/' + wp_blog_id)
+        return BeautifulSoup(json.dumps(content_response.json()['content']).decode('unicode_escape').encode('ascii', 'ignore').strip(), "html.parser").text[1:-1]
+    
+    """elif non_wp_url:
+        from wsgi import non_wp_selectors
+        
+        for blog in non_wp_selectors:
+            content = ""
+            if blog in non_wp_url:
+                soup = BeautifulSoup(requests.get(non_wp_url).content, "html.parser")
+                parent_struct = non_wp_selectors[blog].keys()[0]
+                parent_attr = non_wp_selectors[blog][parent_struct].keys()[0]
+                parent_attr_val = non_wp_selectors[blog][parent_struct][parent_attr]
+                parent = soup.find(parent_struct, {parent_attr : parent_attr_val})
+                for tag in parent.children:
+                    try:
+                        if tag.name == 'p' or tag.name == 'ul' or tag.name == "ol":
+                            content += tag.text.decode('unicode_escape').encode('ascii', 'ignore').strip()
+                        elif tag.name == 'iframe':
+                            pass
+                        else:
+                            content += tag.string.decode('unicode_escape').encode('ascii', 'ignore').strip()
+                    except:
+                        pass
+        print(non_wp_url)
+        return content"""            
 
 def get_tags(url):
     """Tags are pulled from source HTML, which varies per blog. Hence the conditional situation."""
@@ -126,6 +158,9 @@ def insert_row(post_table):
                 query = Post.update(views = post_table[post_index]['views']).where(Post.url == post_table[post_index]['url'])
                 query.execute()
                 
+                query = Post.update(content = post_table[post_index]['content']).where(Post.content != None and Post.url == post_table[post_index]['url'])
+                query.execute()
+                
 def populate_spreadsheet():
     """Prerequisite: database is filled"""
     scope = ['https://spreadsheets.google.com/feeds']
@@ -153,4 +188,4 @@ def start_scheduled_jobs():
     logging.basicConfig()
     sched = BackgroundScheduler()
     sched.start()
-    sched.add_job(populate, 'interval', seconds=60)
+    sched.add_job(populate, 'interval', seconds=5)

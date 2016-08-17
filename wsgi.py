@@ -7,6 +7,7 @@ from db_tables import *
 from gunicorn.instrument.statsd import METRIC_VAR
 import ast
 from HTMLParser import HTMLParser
+from bs4 import BeautifulSoup
 import sys, socket
 
 '''    
@@ -36,6 +37,12 @@ non_wp_blogs = ['https://opensource.com/feed', 'http://stef.thewalter.net/feeds/
 #this is necessary because some of these blogs redirect to other addresses
 redirected_urls = {"redhat.com/blog/verticalindustries":"verticalindustriesblog.redhat.com", "developers.redhat.com":"developerblog.redhat.com", \
                    "redhat.com/blog/mobile":"mobileblog.redhat.com"}
+non_wp_selectors = {"http://www.projectatomic.io/blog" : {"section" : {"class" : "post-content entry-content" }}, 
+                    "http://community.redhat.com/blog" : {"section" : {"class" : "post-content entry-content" }}, 
+                    "http://crunchtools.com/" : {"div" : {"class" : "entry" }},
+                    "http://stef.thewalter.net/" : {"div" : {"class" : "article_text" }},
+                    "https://www.redhat.com/en/about/blog" : {"div": {"class" : "content" }},
+                    "https://opensource.com" : {"div" : {"property" : "schema:articleBody content:encoded" }}}
 
 def find_between(s, first, last):
     try:
@@ -141,6 +148,8 @@ def auth_top_time_query():
         end_date = str(request.form.getlist('end_date')).decode('unicode_escape').encode('ascii', 'ignore').strip()[1:-1]
         blogs = set(blog.decode('unicode_escape').encode('ascii', 'ignore').strip() for blog in request.form.getlist('filter'))
         
+        search_tags = True if ("topic_tag" in request.form) else False
+        search_content = True if ("topic_content" in request.form) else False
         blogs_selected = True if (len(blogs) > 0) else False
         authors_selected = True if (len(authors) > 0) else False
         topics_selected = True if (len(topics) > 0) else False
@@ -170,7 +179,7 @@ def auth_top_time_query():
         for row in Post.select().order_by(-sort_arg):
             #for all matching authors, create a list of all written topics
             if row.author in authors: #this will filter out a lot of unnecessary processing when user selects an author
-                matching_topics = get_matching_topics(row, topics)
+                matching_topics = get_matching_topics(row, topics, search_tags, search_content, topics_selected)
                 if ((((len(matching_topics) > 0) or ((len(matching_topics) == 0) and (row.tags == "") and not topics_selected)) \
                     and start_date[2:-1] <= row.post_date.decode('unicode_escape').encode('ascii', 'ignore').strip() <= end_date[2:-1]) \
                     and ((not blogs_selected) or (blogs_selected and blog_in_filter(row, blogs)))): #verify current row meets all filter requirements
@@ -181,13 +190,16 @@ def auth_top_time_query():
         return auth_top_time_query_options(answer, results)
     return ""
 
-def get_matching_topics(row, topics):
-    """Utility function for auth_top_time_query. Retrieves the set of tags for the current post"""
+def get_matching_topics(row, topics, search_tags, search_content, topics_selected):
+    """Utility function for auth_top_time_query. Retrieves the set of matching tags for the current post"""
     matching_topics = set()
     if len(row.tags) > 0: #w/o this check, ast.literal_eval will error out on any rows with no tags
-        curr_row = ast.literal_eval(row.tags)
+        curr_tags = ast.literal_eval(row.tags)
+        curr_content = row.content
         for topic in topics:
-            if (topic in curr_row): 
+            if (search_tags and topic in curr_tags): 
+                matching_topics.add(topic.decode('unicode_escape').encode('ascii', 'ignore').strip())
+            if (search_content and topics_selected and topic in curr_content):
                 matching_topics.add(topic.decode('unicode_escape').encode('ascii', 'ignore').strip())
     return matching_topics
                 
@@ -235,7 +247,7 @@ def before_request():
 def after_request(response):
     g.db.close()
     return response
-
+                              
 #Ensures that not every gunicorn worker runs an apscheduler job
 try:
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

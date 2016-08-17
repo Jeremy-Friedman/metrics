@@ -19,6 +19,7 @@ class Post(BaseModel):
     tags = CharField(max_length=5000) #this represents the topic
     views = IntegerField(null=True) #null for blogs w/o admin rights
     url = CharField(primary_key = True) 
+    content = TextField(null=True) 
 
 class OAuthInfo(BaseModel):
     access_token = CharField(null=True)
