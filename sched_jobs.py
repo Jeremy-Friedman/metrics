@@ -188,4 +188,4 @@ def start_scheduled_jobs():
     logging.basicConfig()
     sched = BackgroundScheduler()
     sched.start()
-    sched.add_job(populate, 'interval', seconds=5)
+    sched.add_job(populate, 'interval', seconds=300)
